@@ -47,8 +47,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     private func setUpStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(
+        if let image = NSImage(
             systemSymbolName: "web.camera", accessibilityDescription: "FaceFloat")
+            ?? NSImage(systemSymbolName: "video.fill", accessibilityDescription: "FaceFloat") {
+            statusItem.button?.image = image
+        } else {
+            statusItem.button?.title = "FF"
+        }
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -107,6 +112,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+
+        let toggleItem = NSMenuItem(
+            title: window.isVisible ? "Hide Camera" : "Show Camera",
+            action: #selector(toggleCameraWindow(_:)), keyEquivalent: "")
+        toggleItem.target = self
+        menu.addItem(toggleItem)
+        menu.addItem(.separator())
 
         let cameraMenu = NSMenu()
         let devices = CameraManager.availableDevices()
@@ -182,6 +194,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     // MARK: - Actions
+
+    @objc private func toggleCameraWindow(_ sender: NSMenuItem) {
+        if window.isVisible {
+            window.orderOut(nil)
+            camera.stop()
+        } else {
+            camera.start(deviceID: Settings.cameraID)
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
 
     @objc private func selectCamera(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? String else { return }
