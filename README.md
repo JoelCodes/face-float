@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Resources/AppIcon.svg" width="160" alt="FaceFloat app icon — line-art portrait in a circle">
+</p>
+
 # FaceFloat
 
 **A floating, always-on-top webcam overlay for macOS with real-time ML background removal — built natively in Swift with zero dependencies.**
@@ -95,7 +99,7 @@ the `.app` bundle.
 
 ## Roadmap
 
-- App icon and first-run onboarding
+- First-run onboarding
 - Global show/hide keyboard shortcut
 - Developer ID signing + notarization for public distribution
 - Universal (Intel + Apple Silicon) build

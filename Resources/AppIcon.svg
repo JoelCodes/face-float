@@ -1,20 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#2fb7a8"/>
-      <stop offset="1" stop-color="#1d8a90"/>
-    </linearGradient>
-  </defs>
 
   <!-- macOS squircle canvas (100..924) -->
-  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#faf6ef"/>
 
   <!-- warm-white webcam circle -->
   <circle cx="512" cy="512" r="330" fill="#faf6ef"/>
 
+  <defs>
+    <!-- clip torso strokes at the webcam circle edge -->
+    <clipPath id="cam-circle">
+      <circle cx="512" cy="512" r="330"/>
+    </clipPath>
+  </defs>
+
   <!-- face, uniform ink stroke -->
-  <g fill="none" stroke="#232323" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+  <g fill="none" stroke="#232323" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- neck + shoulders + torso: overshoots the circle, clipped at its edge;
+         top edge hides behind the beard fill drawn later -->
+    <path d="M 290 930
+             C 330 812 384 778 442 762
+             C 460 756 468 742 468 690
+             L 556 690
+             C 556 742 564 756 582 762
+             C 640 778 694 812 734 930 Z"
+          fill="#faf6ef" clip-path="url(#cam-circle)"/>
 
     <!-- head outline: forehead + temples, lower face taken over by beard -->
     <path d="M 368 500 C 358 330 424 260 512 260 C 600 260 666 330 656 500"/>
@@ -58,4 +69,7 @@
     <!-- mouth: friendly smile below the beard's built-in mustache -->
     <path d="M 484 658 C 500 670 524 670 540 658"/>
   </g>
+
+  <!-- webcam circle ring: drawn last so it caps the clipped shoulder ends -->
+  <circle cx="512" cy="512" r="330" fill="none" stroke="#232323" stroke-width="16"/>
 </svg>
