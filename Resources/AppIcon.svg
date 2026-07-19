@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2fb7a8"/>
+      <stop offset="1" stop-color="#1d8a90"/>
+    </linearGradient>
+  </defs>
+
+  <!-- macOS squircle canvas (100..924) -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+
+  <!-- warm-white webcam circle -->
+  <circle cx="512" cy="512" r="330" fill="#faf6ef"/>
+
+  <!-- face, uniform ink stroke -->
+  <g fill="none" stroke="#232323" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- head outline: forehead + temples, lower face taken over by beard -->
+    <path d="M 368 500 C 358 330 424 260 512 260 C 600 260 666 330 656 500"/>
+
+    <!-- short tidy hair: swept fringe -->
+    <path d="M 368 430
+             C 352 302 422 234 516 236
+             C 608 238 668 302 656 430
+             C 640 362 602 334 562 334
+             C 522 334 472 348 440 342
+             C 406 336 382 380 368 430 Z"
+          fill="#faf6ef"/>
+
+    <!-- ears -->
+    <path d="M 368 470 C 344 462 338 500 364 516"/>
+    <path d="M 656 470 C 680 462 686 500 660 516"/>
+
+    <!-- beard: closed mass, wavy top edge; mustache + mouth drawn on top -->
+    <path d="M 368 500
+             C 368 630 420 718 512 718
+             C 604 718 656 630 656 500
+             C 648 548 634 560 612 556
+             C 596 560 586 576 580 598
+             C 562 582 530 580 512 592
+             C 494 580 462 582 444 598
+             C 438 576 428 560 412 556
+             C 390 560 376 548 368 500 Z"
+          fill="#faf6ef"/>
+
+    <!-- eyebrows -->
+    <path d="M 420 452 C 436 442 458 442 472 450"/>
+    <path d="M 552 450 C 566 442 588 442 604 452"/>
+
+    <!-- dot eyes -->
+    <circle cx="446" cy="498" r="14" fill="#232323" stroke="none"/>
+    <circle cx="578" cy="498" r="14" fill="#232323" stroke="none"/>
+
+    <!-- nose: short, small nostril hook -->
+    <path d="M 508 512 C 505 528 500 538 494 546 C 502 554 522 554 530 546"/>
+
+    <!-- mouth: friendly smile below the beard's built-in mustache -->
+    <path d="M 484 658 C 500 670 524 670 540 658"/>
+  </g>
+</svg>
