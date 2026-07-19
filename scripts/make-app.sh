@@ -16,3 +16,13 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 codesign --force --sign - "$APP"
 
 echo "Built $APP — run with: open $APP"
+
+# --install: replace the copy in /Applications and relaunch it.
+if [[ "${1:-}" == "--install" ]]; then
+    pkill -x FaceFloat || true
+    sleep 1
+    rm -rf /Applications/FaceFloat.app
+    cp -R "$APP" /Applications/FaceFloat.app
+    open /Applications/FaceFloat.app
+    echo "Installed and launched /Applications/FaceFloat.app"
+fi
