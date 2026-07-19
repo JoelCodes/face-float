@@ -26,6 +26,18 @@ enum RenderMode: String, CaseIterable {
     }
 }
 
+enum SegmentationQuality: String, CaseIterable {
+    case accurate
+    case fast
+
+    var title: String {
+        switch self {
+        case .accurate: return "Best Edges"
+        case .fast: return "Fast Tracking"
+        }
+    }
+}
+
 enum Settings {
     private static let defaults = UserDefaults.standard
 
@@ -42,6 +54,11 @@ enum Settings {
     static var mirror: Bool {
         get { defaults.object(forKey: "mirror") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "mirror") }
+    }
+
+    static var quality: SegmentationQuality {
+        get { SegmentationQuality(rawValue: defaults.string(forKey: "quality") ?? "") ?? .accurate }
+        set { defaults.set(newValue.rawValue, forKey: "quality") }
     }
 
     static var cameraID: String? {

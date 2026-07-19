@@ -3,50 +3,70 @@ import Foundation
 import Vision
 
 /// Turns raw camera frames into display-ready CIImages: optional person
-/// segmentation (cutout or blur) plus optional mirroring. Runs on the
-/// capture queue; late frames are already discarded upstream.
+/// segmentation (cutout or blur) plus optional mirroring.
+///
+/// Segmentation runs asynchronously on its own queue so the video stays at
+/// full frame rate even with `.accurate` quality; each frame composites with
+/// the latest available mask.
 final class FrameProcessor {
     var mode: RenderMode = .normal
     var mirror = true
+    var quality: SegmentationQuality = .accurate {
+        didSet {
+            let level: VNGeneratePersonSegmentationRequest.QualityLevel =
+                quality == .accurate ? .accurate : .balanced
+            segmentationQueue.async { [segmentation] in
+                segmentation.qualityLevel = level
+            }
+        }
+    }
 
     /// Called on the capture queue with the finished frame.
     var output: ((CIImage) -> Void)?
 
     private let segmentation: VNGeneratePersonSegmentationRequest = {
         let request = VNGeneratePersonSegmentationRequest()
-        request.qualityLevel = .balanced
+        request.qualityLevel = .accurate
         request.outputPixelFormat = kCVPixelFormatType_OneComponent8
         return request
     }()
 
-    // Temporal smoothing state: the previous frame's mask, materialized so the
-    // Core Image filter graph doesn't grow frame over frame.
+    private let segmentationQueue = DispatchQueue(label: "facefloat.segmentation")
+    private let lock = NSLock()
+    private var segmentationBusy = false
+    /// Latest smoothed mask at mask resolution, materialized. Guarded by `lock`.
+    private var latestMask: CIImage?
+    /// Previous mask for temporal smoothing. Segmentation queue only.
     private var previousMask: CIImage?
     private let maskContext = CIContext(options: [.cacheIntermediates: false])
-    /// Fraction of the new mask blended in each frame. Lower = steadier but
-    /// more ghosting when you move quickly.
-    private let maskBlendAmount = 0.4
 
     func process(_ buffer: CVPixelBuffer) {
         var image = CIImage(cvPixelBuffer: buffer)
 
-        if mode != .normal, let mask = personMask(for: buffer, matching: image.extent) {
-            let background: CIImage
-            switch mode {
-            case .cutout:
-                background = CIImage(color: .clear).cropped(to: image.extent)
-            case .blur:
-                background = image
-                    .clampedToExtent()
-                    .applyingFilter("CIGaussianBlur", parameters: ["inputRadius": 18.0])
-                    .cropped(to: image.extent)
-            case .normal:
-                background = image
+        if mode != .normal {
+            scheduleSegmentation(buffer)
+            lock.lock()
+            let mask = latestMask
+            lock.unlock()
+
+            if let mask {
+                let background: CIImage
+                switch mode {
+                case .cutout:
+                    background = CIImage(color: .clear).cropped(to: image.extent)
+                case .blur:
+                    background = image
+                        .clampedToExtent()
+                        .applyingFilter("CIGaussianBlur", parameters: ["inputRadius": 18.0])
+                        .cropped(to: image.extent)
+                case .normal:
+                    background = image
+                }
+                image = image.applyingFilter("CIBlendWithMask", parameters: [
+                    kCIInputBackgroundImageKey: background,
+                    kCIInputMaskImageKey: scaled(mask, to: image.extent),
+                ])
             }
-            image = image.applyingFilter("CIBlendWithMask", parameters: [
-                kCIInputBackgroundImageKey: background,
-                kCIInputMaskImageKey: mask,
-            ])
         }
 
         if mirror {
@@ -58,14 +78,30 @@ final class FrameProcessor {
         output?(image)
     }
 
-    private func personMask(for buffer: CVPixelBuffer, matching extent: CGRect) -> CIImage? {
+    /// Kicks off a mask computation unless one is already in flight.
+    private func scheduleSegmentation(_ buffer: CVPixelBuffer) {
+        lock.lock()
+        let busy = segmentationBusy
+        if !busy { segmentationBusy = true }
+        lock.unlock()
+        guard !busy else { return }
+
+        segmentationQueue.async { [weak self] in
+            guard let self else { return }
+            let mask = self.computeMask(for: buffer)
+            self.lock.lock()
+            if let mask { self.latestMask = mask }
+            self.segmentationBusy = false
+            self.lock.unlock()
+        }
+    }
+
+    /// Runs Vision segmentation, softens the edge, and temporally smooths
+    /// against the previous mask. Returns nil if this frame's request failed.
+    private func computeMask(for buffer: CVPixelBuffer) -> CIImage? {
         let handler = VNImageRequestHandler(cvPixelBuffer: buffer, options: [:])
         guard (try? handler.perform([segmentation])) != nil,
-              let maskBuffer = segmentation.results?.first?.pixelBuffer else {
-            // Segmentation dropped this frame; reuse the last good mask so the
-            // whole background doesn't flash back to sharp for one frame.
-            return previousMask.map { scaled($0, to: extent) }
-        }
+              let maskBuffer = segmentation.results?.first?.pixelBuffer else { return nil }
 
         var mask = CIImage(cvPixelBuffer: maskBuffer)
 
@@ -75,22 +111,23 @@ final class FrameProcessor {
             .cropped(to: mask.extent)
 
         // Exponential moving average against the previous mask to damp flicker.
+        // Accurate masks update less often and are already stable, so favor the
+        // new mask more to reduce trailing.
         if let previous = previousMask, previous.extent == mask.extent {
             mask = mask.applyingFilter("CIMix", parameters: [
                 kCIInputBackgroundImageKey: previous,
-                "inputAmount": maskBlendAmount,
+                "inputAmount": quality == .accurate ? 0.7 : 0.4,
             ])
         }
 
         // Materialize at mask resolution (small, cheap) to cap the graph depth.
-        if let rendered = maskContext.createCGImage(mask, from: mask.extent) {
-            mask = CIImage(cgImage: rendered)
-            previousMask = mask
-        } else {
+        guard let rendered = maskContext.createCGImage(mask, from: mask.extent) else {
             previousMask = nil
+            return nil
         }
-
-        return scaled(mask, to: extent)
+        let materialized = CIImage(cgImage: rendered)
+        previousMask = materialized
+        return materialized
     }
 
     private func scaled(_ mask: CIImage, to extent: CGRect) -> CIImage {

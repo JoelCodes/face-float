@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     func applicationDidFinishLaunching(_ notification: Notification) {
         processor.mode = Settings.mode
         processor.mirror = Settings.mirror
+        processor.quality = Settings.quality
 
         camera.frameHandler = { [processor] buffer in processor.process(buffer) }
         processor.output = { [videoView] image in videoView.show(image) }
@@ -145,6 +146,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         menu.addItem(.separator())
 
+        let qualityMenu = NSMenu()
+        for quality in SegmentationQuality.allCases {
+            let item = NSMenuItem(
+                title: quality.title, action: #selector(selectQuality(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = quality.rawValue
+            item.state = quality == Settings.quality ? .on : .off
+            qualityMenu.addItem(item)
+        }
+        let qualityItem = NSMenuItem(title: "Edge Quality", action: nil, keyEquivalent: "")
+        qualityItem.submenu = qualityMenu
+        menu.addItem(qualityItem)
+        menu.addItem(.separator())
+
         let mirrorItem = NSMenuItem(
             title: "Mirror", action: #selector(toggleMirror(_:)), keyEquivalent: "")
         mirrorItem.target = self
@@ -187,6 +202,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
               let mode = RenderMode(rawValue: raw) else { return }
         Settings.mode = mode
         processor.mode = mode
+    }
+
+    @objc private func selectQuality(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let quality = SegmentationQuality(rawValue: raw) else { return }
+        Settings.quality = quality
+        processor.quality = quality
     }
 
     @objc private func toggleMirror(_ sender: NSMenuItem) {
