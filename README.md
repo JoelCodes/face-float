@@ -36,8 +36,8 @@ native-macOS engineering exercise.
 ## Quick start
 
 ```sh
-git clone <this repo>
-cd face-screen-clone
+git clone https://github.com/JoelCodes/face-float.git
+cd face-float
 ./scripts/make-app.sh --install   # builds, installs to /Applications, launches
 ```
 
